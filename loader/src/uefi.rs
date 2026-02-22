@@ -4,6 +4,8 @@ use core::{
     fmt, ptr, slice,
 };
 
+use crate::memory_map::MemoryMap;
+
 pub type EFIHandle = *mut u8;
 
 #[repr(C)]
@@ -170,15 +172,35 @@ pub fn init_text_writer(system_table: &'static EFISystemTable) {
 #[derive(Debug)]
 pub struct EFIBootServices {
     pub header: EFITableHeader,
-    _padding: [EFIHandle; 37],
+    _padding0: [EFIHandle; 4],
+    get_memory_map: fn(*mut usize, *mut u8, *mut usize, *mut usize, *mut u32) -> EFIStatus,
+    _padding1: [EFIHandle; 32],
     locate_protocol: fn(*const EFIGuid, *const u8, *mut *mut u8) -> EFIStatus,
 }
+
+const _: () = {
+    use core::mem::offset_of;
+    ["get_memory_map"][offset_of!(EFIBootServices, get_memory_map) - 56];
+    ["locate_protocol"][offset_of!(EFIBootServices, locate_protocol) - 320];
+};
 
 impl EFIBootServices {
     pub fn locate_protocol<'a, T: Guid>(&self) -> &'a T {
         let mut p = ptr::null_mut();
         (self.locate_protocol)(&T::guid(), ptr::null(), &mut p);
         unsafe { &*(p as *mut T) }
+    }
+
+    pub fn get_memory_map(&self) -> MemoryMap {
+        let mut memory_map = MemoryMap::default();
+        (self.get_memory_map)(
+            &mut memory_map.size,
+            memory_map.buf.as_mut_ptr(),
+            &mut memory_map.map_key,
+            &mut memory_map.descriptor_size,
+            &mut memory_map.version,
+        );
+        memory_map
     }
 }
 
@@ -204,4 +226,14 @@ pub struct EFIGraphicsOutputProtocolMode {
     pub size: usize,
     pub frame_buffer_base: u64,
     pub frame_buffer_size: usize,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct EFIMemoryDescriptor {
+    typ: u32,
+    physical_address: u64,
+    virtusl_start: u64,
+    number_of_pages: u64,
+    attribute: u64,
 }
