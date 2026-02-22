@@ -1,0 +1,32 @@
+[tasks.ovmf]
+script = '''
+curl -L https://github.com/uchan-nos/mikanos-build/raw/refs/tags/v2.0/devenv/OVMF_CODE.fd -o OVMF_CODE.fd
+curl -L https://github.com/uchan-nos/mikanos-build/raw/refs/tags/v2.0/devenv/OVMF_VARS.fd -o OVMF_VARS.fd
+'''
+
+[tasks.loader]
+script = '''
+cd loader
+cargo build
+'''
+
+[tasks.make-image]
+script = '''
+rm -f disk.img
+qemu-img create -f raw disk.img 200M
+mkfs.fat -n 'MIKAN OS RS' -s 2 -f 2 -R 32 -F 32 disk.img
+
+mmd -i disk.img ::/EFI ::/EFI/BOOT
+mcopy -i disk.img loader/target/x86_64-unknown-uefi/debug/loader.efi ::/EFI/BOOT/BOOTX64.EFI
+'''
+dependencies = ["loader"]
+
+[tasks.launch]
+script = '''
+qemu-system-x86_64 \
+    -drive if=pflash,format=raw,file=OVMF_CODE.fd \
+    -drive if=pflash,format=raw,file=OVMF_VARS.fd \
+    -drive if=ide,index=0,media=disk,format=raw,file=disk.img \
+    -monitor stdio
+'''
+dependencies = ["make-image"]
