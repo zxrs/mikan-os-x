@@ -8,15 +8,23 @@ mod panic;
 mod uefi;
 mod x86;
 
-use core::fmt::Write;
+use core::{fmt::Write, slice};
 use memory_map::MemoryMapVisitor;
-use uefi::{EFIHandle, EFISystemTable, init_text_writer};
+use uefi::{EFIGraphicsOutputProtocol, EFIHandle, EFISystemTable, init_text_writer};
 
 #[unsafe(no_mangle)]
 fn efi_main(_: EFIHandle, system_table: &'static EFISystemTable) -> ! {
     system_table.con_out.clear_screen();
 
     init_text_writer(system_table);
+
+    let gop = system_table
+        .boot_services
+        .locate_protocol::<EFIGraphicsOutputProtocol>();
+    let base = gop.mode.frame_buffer_base as *mut u8;
+    let size = gop.mode.frame_buffer_size;
+    let frame_buffer = unsafe { slice::from_raw_parts_mut(base, size) };
+    frame_buffer.fill(255);
 
     println!("{}", system_table.firmware_vendor);
 

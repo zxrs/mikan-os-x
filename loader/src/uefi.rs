@@ -32,6 +32,12 @@ const EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID: EFIGuid = EFIGuid {
 #[derive(Debug, Clone, Copy)]
 pub struct EFIStatus(usize);
 
+impl EFIStatus {
+    pub fn is_success(&self) -> bool {
+        self.0 == 0
+    }
+}
+
 #[repr(C)]
 #[derive(Debug)]
 pub struct EFITableHeader {
