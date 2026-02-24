@@ -1,10 +1,10 @@
 use core::{
     cell::RefCell,
     char::{REPLACEMENT_CHARACTER, decode_utf16},
-    fmt, ptr, slice,
+    fmt, ptr,
 };
 
-use crate::memory_map::MemoryMap;
+use super::memory_map::MemoryMap;
 
 pub type EFIHandle = *mut u8;
 
@@ -185,12 +185,6 @@ const _: () = {
 };
 
 impl EFIBootServices {
-    pub fn locate_protocol<'a, T: Guid>(&self) -> &'a T {
-        let mut p = ptr::null_mut();
-        (self.locate_protocol)(&T::guid(), ptr::null(), &mut p);
-        unsafe { &*(p as *mut T) }
-    }
-
     pub fn get_memory_map(&self) -> MemoryMap {
         let mut memory_map = MemoryMap::default();
         (self.get_memory_map)(
@@ -201,6 +195,12 @@ impl EFIBootServices {
             &mut memory_map.version,
         );
         memory_map
+    }
+
+    pub fn locate_protocol<'a, T: Guid>(&self) -> &'a T {
+        let mut p = ptr::null_mut();
+        (self.locate_protocol)(&T::guid(), ptr::null(), &mut p);
+        unsafe { &*(p as *mut T) }
     }
 }
 
@@ -226,14 +226,4 @@ pub struct EFIGraphicsOutputProtocolMode {
     pub size: usize,
     pub frame_buffer_base: u64,
     pub frame_buffer_size: usize,
-}
-
-#[repr(C)]
-#[derive(Debug)]
-pub struct EFIMemoryDescriptor {
-    typ: u32,
-    physical_address: u64,
-    virtusl_start: u64,
-    number_of_pages: u64,
-    attribute: u64,
 }

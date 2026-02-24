@@ -1,4 +1,4 @@
-use crate::x86;
+use super::x86;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {

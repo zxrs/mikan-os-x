@@ -9,9 +9,8 @@ mod uefi;
 mod x86;
 
 use core::fmt::Write;
-use uefi::{EFIHandle, EFISystemTable};
-
-use crate::uefi::init_text_writer;
+use memory_map::MemoryMapVisitor;
+use uefi::{EFIHandle, EFISystemTable, init_text_writer};
 
 #[unsafe(no_mangle)]
 fn efi_main(_: EFIHandle, system_table: &'static EFISystemTable) -> ! {
@@ -22,7 +21,11 @@ fn efi_main(_: EFIHandle, system_table: &'static EFISystemTable) -> ! {
     println!("{}", system_table.firmware_vendor);
 
     let memory_map = system_table.boot_services.get_memory_map();
-    println!("{:?}", memory_map);
+
+    let visitor = MemoryMapVisitor::new(&memory_map);
+    visitor.for_each(|d| {
+        println!("{:?}, {:x?}", d.typ, d.physical_address);
+    });
 
     loop {
         x86::halt();
